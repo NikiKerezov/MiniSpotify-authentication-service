@@ -5,13 +5,17 @@ import com.example.authenticationservice.repositories.UserRepository;
 import com.example.authenticationservice.requests.AuthenticationRequest;
 import com.example.authenticationservice.requests.AuthenticationResponse;
 import com.example.authenticationservice.requests.RegisterRequest;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +24,9 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
+
+    @NonNull
+    private StringRedisTemplate redisTemplate;
     public AuthenticationResponse register(RegisterRequest request) {
         User user = User.builder()
                 .username(request.getUsername())
@@ -35,6 +42,10 @@ public class AuthenticationService {
         }
         userRepository.save(user);
         String jwtToken = jwtService.generateToken(user);
+
+         // Cache the token in Redis with a TTL (e.g., 3600 seconds)
+        redisTemplate.opsForValue().set(jwtToken, jwtToken, Duration.ofSeconds(3600)); // Cache with a TTL
+
         return AuthenticationResponse.builder()
                 .jwtToken(jwtToken)
                 .build();
@@ -50,6 +61,10 @@ public class AuthenticationService {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         String jwtToken = jwtService.generateToken(user);
+
+        // Cache the token in Redis with a TTL (e.g., 3600 seconds)
+        redisTemplate.opsForValue().set(jwtToken, jwtToken, Duration.ofSeconds(3600)); // Cache with a TTL
+
         return AuthenticationResponse.builder()
                 .jwtToken(jwtToken)
                 .build();
