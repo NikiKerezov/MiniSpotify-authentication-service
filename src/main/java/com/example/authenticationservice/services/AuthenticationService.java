@@ -28,6 +28,12 @@ public class AuthenticationService {
                 .role(request.getRole())
                 .build();
 
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+            throw new IllegalArgumentException("User with such username already exists!");
+        } else if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("User with such email already exists!");
+        }
+        userRepository.save(user);
         String jwtToken = jwtService.generateToken(user);
         return AuthenticationResponse.builder()
                 .jwtToken(jwtToken)
